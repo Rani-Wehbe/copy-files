@@ -1,0 +1,38 @@
+$sourceRoot = "D:\"
+$targetRoot = "F:\"
+
+# Get top-level directories in source and target
+$sourceFolders = Get-ChildItem -Path $sourceRoot -Directory
+$targetFolders = Get-ChildItem -Path $targetRoot -Directory
+
+# Find common folder names
+$commonFolderNames = $sourceFolders.Name | Where-Object { $targetFolders.Name -contains $_ }
+
+foreach ($folderName in $commonFolderNames) {
+    $sourceFolderPath = Join-Path $sourceRoot $folderName
+    $targetFolderPath = Join-Path $targetRoot $folderName
+
+    Write-Host "`n🔍 Comparing: $folderName" -ForegroundColor Cyan
+
+    # Recursively get all files from source subfolder
+    $sourceFiles = Get-ChildItem -Path $sourceFolderPath -Recurse -File
+
+    foreach ($file in $sourceFiles) {
+        # Get relative path to recreate folder structure in destination
+        $relativePath = $file.FullName.Substring($sourceFolderPath.Length).TrimStart('\')
+        $destFilePath = Join-Path $targetFolderPath $relativePath
+
+        if (!(Test-Path $destFilePath)) {
+            # Create target directory if it doesn't exist
+            $destDir = Split-Path $destFilePath
+            if (!(Test-Path $destDir)) {
+                New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            }
+
+            Write-Host "➕ Copying: $relativePath" -ForegroundColor Green
+            Copy-Item -Path $file.FullName -Destination $destFilePath -Force
+        }
+    }
+}
+
+Write-Host "`n✅ Sync complete. Only missing files were copied." -ForegroundColor Yellow
