@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Set your source and target root directories here
+sourceRoot="/mnt/d/"
+targetRoot="/mnt/f/"
+
+# Get top-level directories in source and target
+mapfile -t sourceFolders < <(find "$sourceRoot" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")
+mapfile -t targetFolders < <(find "$targetRoot" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")
+
+# Find common folder names
+commonFolders=()
+for folder in "${sourceFolders[@]}"; do
+    for tfolder in "${targetFolders[@]}"; do
+        if [[ "$folder" == "$tfolder" ]]; then
+            commonFolders+=("$folder")
+        fi
+    done
+
+done
+
+for folderName in "${commonFolders[@]}"; do
+    sourceFolderPath="$sourceRoot/$folderName"
+    targetFolderPath="$targetRoot/$folderName"
+
+    echo -e "\n🔍 Comparing: $folderName"
+
+    # Recursively get all files from source subfolder
+    find "$sourceFolderPath" -type f | while read -r file; do
+        relativePath="${file#$sourceFolderPath/}"
+        destFilePath="$targetFolderPath/$relativePath"
+
+        if [[ ! -e "$destFilePath" ]]; then
+            destDir="$(dirname "$destFilePath")"
+            mkdir -p "$destDir"
+            echo -e "➕ Copying: $relativePath"
+            cp -p "$file" "$destFilePath"
+        fi
+    done
+done
+
+echo -e "\n✅ Sync complete. Only missing files were copied."
